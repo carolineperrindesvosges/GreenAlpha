@@ -8,6 +8,7 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import streamlit as st
 from scipy.optimize import minimize
 
@@ -18,28 +19,43 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Palette sage + argile (cohérente avec les slides)
-C_SAGE_DEEP = '#4A6655'
-C_SAGE      = '#6B8676'
-C_SAGE_MID  = '#94B0A1'
-C_SAGE_BG   = '#EFF4F0'
-C_CLAY_DEEP = '#8E6645'
-C_CLAY      = '#B08361'
-C_CLAY_MID  = '#C9A085'
-C_CLAY_BG   = '#F4E6D3'
-C_TEXT      = '#2D332F'
-C_MUTED     = '#8A938D'
+# ── PALETTE PASTEL — LILAS + ROSE POUDRÉ ──────────────────────────────────
+C_LILAC_DEEP  = '#6B5B95'   # lilas profond — titres
+C_LILAC       = '#9B89C2'   # lilas principal
+C_LILAC_MID   = '#B8A8D9'   # lilas moyen
+C_LILAC_SOFT  = '#D5CAE5'   # lilas pâle
+C_LILAC_BG    = '#ECE5F4'   # fond très pâle
+C_LILAC_PALER = '#F6F2FA'   # quasi blanc
+
+C_ROSE_DEEP   = '#B07A8E'   # rose poudré profond
+C_ROSE        = '#D4A0B5'   # rose poudré
+C_ROSE_MID    = '#E5BFCD'   # rose pâle
+C_ROSE_SOFT   = '#F0D5DE'   # rose très pâle
+C_ROSE_BG     = '#F8E5EC'   # fond rose pâle
+C_ROSE_PALER  = '#FCF5F8'
+
+C_TEXT  = '#2D2A3A'
+C_MUTED = '#8A8595'
+
+# Colormap pastel pour les scores ESG (rose → lilas)
+PASTEL_CMAP = LinearSegmentedColormap.from_list(
+    'pastel_esg',
+    [(0.0, '#B07A8E'), (0.4, '#E5BFCD'), (0.6, '#C5B8DD'), (1.0, '#6B5B95')],
+)
 
 plt.rcParams.update({
     'figure.facecolor': 'white',
-    'axes.facecolor':   '#FAFAFA',
+    'axes.facecolor':   '#FBFAFD',
     'axes.grid':        True,
     'grid.alpha':       0.20,
-    'grid.color':       '#CCCCCC',
+    'grid.color':       '#D5CAE5',
     'font.family':      'sans-serif',
     'axes.spines.top':   False,
     'axes.spines.right': False,
-    'axes.edgecolor':    '#BBBBBB',
+    'axes.edgecolor':    '#B8A8D9',
+    'axes.labelcolor':   C_TEXT,
+    'xtick.color':       C_MUTED,
+    'ytick.color':       C_MUTED,
 })
 
 # ── UNIVERS ───────────────────────────────────────────────────────────────
@@ -63,7 +79,6 @@ ESG   = np.array([ASSETS[a]['esg'] for a in NAMES])
 RF      = 0.025
 ESG_MIN = 55
 
-# Matrice de covariance stable (semence fixée)
 def _build_cov():
     rng = np.random.default_rng(42)
     A   = rng.standard_normal((N, N)) * 0.15
@@ -133,19 +148,14 @@ def get_event_data(event_label):
     rets_shock = RETS.copy()
     esg_shock  = ESG.copy()
     if event_label.startswith("1"):
-        desc = "📉 Krach sectoriel Énergie : TotalEnergies −15%"
         rets_shock[NAMES.index('TotalEnergies')] -= 0.15
     elif event_label.startswith("2"):
-        desc = "💥 Scandale ESG Stellantis : −20% et score ESG effondré"
         rets_shock[NAMES.index('Stellantis')] -= 0.20
         esg_shock[NAMES.index('Stellantis')]   = 5
     elif event_label.startswith("3"):
-        desc = "🌿 Rally Green Tech : Schneider +15%, Air Liquide +10%"
         rets_shock[NAMES.index('Schneider')]   += 0.15
         rets_shock[NAMES.index('Air Liquide')] += 0.10
-    else:
-        desc = "Aucun événement"
-    return rets_shock, esg_shock, desc
+    return rets_shock, esg_shock
 
 def compute_score(w, rets, esg_scores, rf=RF, bonus=0.0):
     r, v = port_stats(w, rets)
@@ -175,7 +185,7 @@ def set_weights_from_array(prefix, w_array):
 # ── ÉTAT INITIAL ──────────────────────────────────────────────────────────
 def init_state():
     if 'team_name' not in st.session_state:
-        st.session_state.team_name = 'MonEquipe'
+        st.session_state.team_name = 'MonÉquipe'
     if 'event_label' not in st.session_state:
         st.session_state.event_label = '1 — Krach sectoriel Énergie'
     for name in NAMES:
@@ -187,14 +197,16 @@ init_state()
 # ── HEADER ────────────────────────────────────────────────────────────────
 st.markdown(
     f"""
-    <div style="background:linear-gradient(135deg,{C_SAGE_DEEP},{C_SAGE});
-                padding:24px;border-radius:10px;color:white;text-align:center;
-                margin-bottom:20px;">
-        <h1 style="margin:0;font-weight:600;">🏦 GreenAlpha Challenge</h1>
-        <p style="color:{C_CLAY_MID};margin:6px 0 0 0;font-size:1.05em;">
-          Serious Game · Gestion de portefeuille \\& Finance durable
+    <div style="background:linear-gradient(135deg,{C_LILAC_DEEP},{C_LILAC});
+                padding:28px;border-radius:14px;color:white;text-align:center;
+                margin-bottom:20px;box-shadow:0 2px 12px rgba(107,91,149,0.15);">
+        <h1 style="margin:0;font-weight:600;letter-spacing:0.5px;">
+          🌸 GreenAlpha Challenge
+        </h1>
+        <p style="color:{C_ROSE_MID};margin:8px 0 0 0;font-size:1.05em;font-style:italic;">
+          Une journée chez GreenAlpha Asset Management — place Vendôme, Paris
         </p>
-        <p style="color:#D7DBDD;margin:4px 0 0 0;font-size:0.85em;">
+        <p style="color:#E8E0F2;margin:6px 0 0 0;font-size:0.85em;">
           M1 Finance · Grenoble IAE · Cours « Investissements et marchés financiers »
         </p>
     </div>
@@ -205,9 +217,9 @@ st.markdown(
 # ── SIDEBAR ───────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### ⚙️ Paramètres")
-    st.text_input("Nom de l'équipe", key='team_name')
+    st.text_input("Nom de votre équipe", key='team_name')
     st.selectbox(
-        "Événement révélé par le professeur",
+        "Événement de la journée",
         ['1 — Krach sectoriel Énergie',
          '2 — Scandale ESG Stellantis',
          '3 — Rally Green Tech'],
@@ -215,7 +227,7 @@ with st.sidebar:
     )
     st.markdown("---")
     st.caption(f"Taux sans risque : **{RF*100:.1f}%**")
-    st.caption(f"Seuil ESG Acte 2 : **{ESG_MIN}**")
+    st.caption(f"Seuil ESG SFDR Art. 8 : **{ESG_MIN}**")
     st.caption("Univers : 10 actions Euronext")
     st.markdown("---")
     if st.button("🔄 Réinitialiser tous les poids", use_container_width=True):
@@ -224,31 +236,62 @@ with st.sidebar:
             st.session_state[f'a2_{name}'] = 0
         st.rerun()
 
-rets_shock, esg_shock, desc_evt = get_event_data(st.session_state.event_label)
+rets_shock, esg_shock = get_event_data(st.session_state.event_label)
 
 # ── ONGLETS ───────────────────────────────────────────────────────────────
 tab_brief, tab_a1, tab_evt, tab_a2, tab_score, tab_pitch = st.tabs(
-    ["⚡ Briefing", "🎯 Acte 1", "📰 Événement", "🌿 Acte 2", "📊 Score", "🎤 Pitch & Correction"]
+    ["☕ 8h30 · Briefing",
+     "🎯 11h · Acte 1",
+     "📰 12h17 · Breaking news",
+     "🌿 15h47 · Acte 2",
+     "📊 18h · Score",
+     "🎤 18h30 · Comité"]
 )
 
-# ── BRIEFING ──────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# BRIEFING — 8h30
+# ─────────────────────────────────────────────────────────────────────────
 with tab_brief:
-    st.markdown("### Mission")
-    st.markdown(
-        f"""
-        Vous êtes **gérants juniors** chez *GreenAlpha Asset Management*.  
-        Votre équipe **{st.session_state.team_name}** doit construire, défendre et
-        optimiser un portefeuille d'actions européennes — d'abord librement,
-        puis sous contrainte ESG imposée par une nouvelle directive réglementaire (SFDR Art. 8).
-        """
-    )
+    st.markdown(f"""
+    <div style="background:{C_LILAC_PALER};border-left:4px solid {C_LILAC};
+                padding:18px 20px;border-radius:6px;margin-bottom:20px;">
+      <p style="color:{C_MUTED};font-size:0.85em;margin:0 0 6px 0;
+                letter-spacing:1px;">📍 LUNDI 8H30 · PLACE VENDÔME, PARIS</p>
+      <p style="font-size:1.05em;color:{C_TEXT};margin:0;line-height:1.6;">
+        Vous poussez la lourde porte de <b>GreenAlpha Asset Management</b>.
+        Boutique d'investissement créée il y a trois ans par d'anciens
+        gérants de chez Carmignac. Vingt collaborateurs, 1,2 milliard
+        d'encours, et une réputation : <i>du green qui ne triche pas</i>.
+      </p>
+      <p style="font-size:1.05em;color:{C_TEXT};margin:14px 0 0 0;line-height:1.6;">
+        <b>Élise Marchand</b>, votre directrice de la gestion, vous tend
+        un café tiède et s'assoit en face de vous.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns(3)
-    c1.info("⚡ **Briefing**\n\nDécouverte des actifs et des règles")
-    c2.info("🎯 **Acte 1**\n\nPortefeuille libre (Markowitz)")
-    c3.info("🌿 **Acte 2**\n\nRéallocation sous contrainte ESG")
+    st.markdown(f"""
+    <div style="background:{C_ROSE_PALER};border-left:4px solid {C_ROSE};
+                padding:16px 20px;border-radius:6px;margin-bottom:20px;
+                font-style:italic;color:{C_TEXT};line-height:1.65;">
+      « Bienvenue dans l'équipe.<br><br>
+      On vient de boucler une levée de <b>200 millions d'euros</b> auprès de
+      family offices européens. Le mandat est clair : un fonds
+      <b>SFDR Article 8</b>, surperformance attendue, et zéro tolérance au
+      greenwashing.<br><br>
+      Les investisseurs nous regardent — et la presse aussi. Je vous laisse
+      la matinée pour proposer une <b>première allocation</b>. On en parle
+      à 11h.<br><br>
+      Bon courage. »
+      <p style="text-align:right;margin:10px 0 0 0;font-style:normal;
+                color:{C_MUTED};font-size:0.85em;">— Élise Marchand,
+                Directrice de la gestion</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("### Univers d'investissement")
+    st.markdown("### 📊 Votre univers d'investissement")
+    st.caption("Dix actions européennes sélectionnées par le comité ESG la semaine dernière.")
+
     df_assets = pd.DataFrame({
         'Actif': NAMES,
         'Secteur': [ASSETS[a]['sector'] for a in NAMES],
@@ -258,78 +301,103 @@ with tab_brief:
     })
 
     def color_esg(val):
-        if val >= 65: return f'background-color:{C_SAGE_BG};color:{C_SAGE_DEEP};font-weight:600'
-        if val >= 45: return 'background-color:#FFF8E5;color:#856404'
-        return f'background-color:{C_CLAY_BG};color:{C_CLAY_DEEP}'
+        if val >= 65: return f'background-color:{C_LILAC_BG};color:{C_LILAC_DEEP};font-weight:600'
+        if val >= 45: return f'background-color:{C_ROSE_PALER};color:{C_ROSE_DEEP}'
+        return f'background-color:{C_ROSE_SOFT};color:{C_ROSE_DEEP};font-weight:600'
 
     st.dataframe(
-       df_assets.style.map(color_esg, subset=['Score ESG /100']),
+        df_assets.style.map(color_esg, subset=['Score ESG /100']),
         use_container_width=True, hide_index=True,
     )
 
-    # Scatter risque/rendement coloré ESG
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    sc = ax.scatter(VOLS * 100, RETS * 100, c=ESG, cmap='RdYlGn',
-                    vmin=20, vmax=90, s=180, zorder=5,
-                    edgecolors='white', lw=1.8)
-    plt.colorbar(sc, ax=ax, label='Score ESG')
+    sc = ax.scatter(VOLS * 100, RETS * 100, c=ESG, cmap=PASTEL_CMAP,
+                    vmin=20, vmax=90, s=200, zorder=5,
+                    edgecolors='white', lw=2)
+    cbar = plt.colorbar(sc, ax=ax, label='Score ESG')
+    cbar.ax.tick_params(labelsize=8)
     for i, name in enumerate(NAMES):
         ax.annotate(name, (VOLS[i]*100, RETS[i]*100),
-                    textcoords='offset points', xytext=(8, 5), fontsize=9)
-    ax.axhline(np.mean(RETS)*100, color=C_MUTED, ls=':', alpha=0.5, label='Rdt. moyen')
-    ax.axvline(np.mean(VOLS)*100, color=C_MUTED, ls='--', alpha=0.5, label='Vol. moyenne')
+                    textcoords='offset points', xytext=(8, 5),
+                    fontsize=9, color=C_TEXT)
+    ax.axhline(np.mean(RETS)*100, color=C_LILAC_MID, ls=':', alpha=0.6,
+               label='Rdt. moyen')
+    ax.axvline(np.mean(VOLS)*100, color=C_LILAC_MID, ls='--', alpha=0.6,
+               label='Vol. moyenne')
     ax.set_xlabel('Volatilité (%)'); ax.set_ylabel('Rendement espéré (%)')
     ax.set_title("Espace risque / rendement — couleur = score ESG",
-                 fontweight='bold', color=C_SAGE_DEEP)
+                 fontweight='bold', color=C_LILAC_DEEP)
     ax.legend(fontsize=9); fig.tight_layout()
     st.pyplot(fig)
 
-    with st.expander("ℹ️ Conseils pour bien démarrer"):
-        st.markdown("""
-        - Regardez d'abord les **actions vertes mais peu rentables** vs les **brunes mais lucratives** : c'est l'arbitrage central du jeu.
-        - Une **volatilité élevée** ne signifie pas mauvais actif : la **diversification** peut le rendre utile.
-        - Le **score ESG d'un portefeuille** est la moyenne *pondérée par les poids*.
+    with st.expander("💡 Conseils d'Élise avant de commencer"):
+        st.markdown(f"""
+        - Regardez les **vertes peu rentables** (L'Oréal, Schneider, Air Liquide)
+          face aux **brunes mais lucratives** (Stellantis, TotalEnergies) :
+          c'est l'arbitrage central de votre métier.
+        - Une **volatilité élevée** ne veut pas dire mauvais actif —
+          la **diversification** peut le rendre indispensable.
+        - Le **score ESG du portefeuille** est la moyenne *pondérée* :
+          un peu de Stellantis tire la moyenne vers le bas très vite.
         """)
 
-# ── ACTE 1 ────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# ACTE 1 — 11h
+# ─────────────────────────────────────────────────────────────────────────
 with tab_a1:
-    st.markdown("### 🎯 Acte 1 — Portefeuille libre")
-    st.markdown(
-        "> **Consigne :** aucune contrainte ESG. Maximisez le **ratio de Sharpe**. "
-        "Vous disposez de 100% à allouer entre les 10 actifs."
-    )
+    st.markdown(f"""
+    <div style="background:{C_LILAC_PALER};border-left:4px solid {C_LILAC};
+                padding:18px 20px;border-radius:6px;margin-bottom:20px;">
+      <p style="color:{C_MUTED};font-size:0.85em;margin:0 0 6px 0;
+                letter-spacing:1px;">📍 11H00 · OPEN-SPACE GREENALPHA</p>
+      <p style="color:{C_TEXT};margin:0;line-height:1.6;">
+        Élise est en réunion avec les avocats du fonds. Vous avez carte
+        blanche jusqu'à midi.
+      </p>
+      <p style="color:{C_TEXT};margin:12px 0 0 0;line-height:1.6;
+                font-style:italic;">
+        Mémo qu'elle vous a laissé sur le bureau : <i>« Pour cette première
+        allocation, oubliez les contraintes ESG officielles —
+        <b>maximisez le ratio de Sharpe</b>. Mais gardez en tête :
+        nous sommes un fonds Article 8, l'œil de l'AMF est sur nous. »</i>
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Frontière efficiente Acte 1
     fv_ref, fr_ref = frontier()
     w_opt_ref = optimize()
     r_ref, v_ref = port_stats(w_opt_ref)
     sharpe_ref = (r_ref - RF) / v_ref
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    ax.scatter(VOLS*100, RETS*100, c=ESG, cmap='RdYlGn', vmin=20, vmax=90,
-               s=120, zorder=5, edgecolors='white', lw=1.3)
+    ax.scatter(VOLS*100, RETS*100, c=ESG, cmap=PASTEL_CMAP,
+               vmin=20, vmax=90, s=130, zorder=5,
+               edgecolors='white', lw=1.5)
     for i, name in enumerate(NAMES):
         ax.annotate(name, (VOLS[i]*100, RETS[i]*100),
-                    textcoords='offset points', xytext=(6, 4), fontsize=8.5)
-    ax.plot(fv_ref*100, fr_ref*100, '--', color=C_SAGE_DEEP, lw=2.2,
+                    textcoords='offset points', xytext=(6, 4),
+                    fontsize=8.5, color=C_TEXT)
+    ax.plot(fv_ref*100, fr_ref*100, '--', color=C_LILAC_DEEP, lw=2.4,
             label='Frontière efficiente')
-    ax.scatter([v_ref*100], [r_ref*100], marker='*', s=320,
-               color=C_CLAY, zorder=6, edgecolor='white', lw=1,
+    ax.scatter([v_ref*100], [r_ref*100], marker='*', s=380,
+               color=C_ROSE_DEEP, zorder=6,
+               edgecolor='white', lw=1.5,
                label=f"Max Sharpe = {sharpe_ref:.3f}")
     x_cml = np.linspace(0, max(VOLS)*100*1.1, 100)
     ax.plot(x_cml, RF*100 + sharpe_ref*x_cml, ':',
-            color=C_CLAY_MID, alpha=0.7, label='CML')
+            color=C_ROSE, alpha=0.7, label='CML')
     ax.set_xlabel('Volatilité (%)'); ax.set_ylabel('Rendement espéré (%)')
-    ax.set_title('Frontière efficiente — Acte 1', fontweight='bold', color=C_SAGE_DEEP)
+    ax.set_title('Frontière efficiente — Acte 1',
+                 fontweight='bold', color=C_LILAC_DEEP)
     ax.legend(fontsize=9); fig.tight_layout()
     st.pyplot(fig)
 
     st.info(
-        f"💡 **Optimum théorique** : Rdt={r_ref*100:.2f}% · Vol={v_ref*100:.2f}% · "
+        f"💡 **Optimum théorique** (l'œil du quant senior) : "
+        f"Rdt={r_ref*100:.2f}% · Vol={v_ref*100:.2f}% · "
         f"Sharpe={sharpe_ref:.3f} · ESG={w_opt_ref@ESG:.1f}"
     )
 
-    # Boutons d'aide
     bcol1, bcol2, bcol3 = st.columns(3)
     if bcol1.button("⚖️ Équipondération (10% chacun)", use_container_width=True):
         set_weights_from_array('a1', np.ones(N) / N); st.rerun()
@@ -339,7 +407,7 @@ with tab_a1:
         for name in NAMES: st.session_state[f'a1_{name}'] = 0
         st.rerun()
 
-    st.markdown("#### ✏️ Saisissez vos poids (en %)")
+    st.markdown("#### ✏️ Votre allocation (en %)")
     cols = st.columns(2)
     for i, name in enumerate(NAMES):
         with cols[i % 2]:
@@ -367,19 +435,114 @@ with tab_a1:
         st.dataframe(df_w1[df_w1['Poids (%)'] > 0],
                      use_container_width=True, hide_index=True)
 
-# ── ÉVÉNEMENT ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# ÉVÉNEMENT — 12h17
+# ─────────────────────────────────────────────────────────────────────────
 with tab_evt:
-    st.markdown("### 📰 Événement de marché")
-    st.warning(desc_evt)
+    label = st.session_state.event_label
+
+    if label.startswith("1"):
+        narrative_html = f"""
+        <div style="background:{C_ROSE_PALER};border:2px solid {C_ROSE_DEEP};
+                    padding:20px;border-radius:8px;margin-bottom:20px;
+                    box-shadow:0 2px 8px rgba(176,122,142,0.15);">
+          <p style="color:{C_ROSE_DEEP};font-weight:bold;font-size:0.85em;
+                    letter-spacing:2px;margin:0 0 10px 0;">
+            🚨 12H17 · BREAKING NEWS · BLOOMBERG
+          </p>
+          <h3 style="color:{C_LILAC_DEEP};margin:0 0 12px 0;">
+            Le gouvernement annonce une taxe surprise sur les superprofits
+            pétroliers
+          </h3>
+          <p style="color:{C_TEXT};line-height:1.6;margin:0 0 12px 0;">
+            L'écran Bloomberg passe au rouge. Twitter s'enflamme. Le CAC
+            plonge à l'ouverture des États-Unis. La taxe sera effective dès
+            demain matin.
+          </p>
+          <p style="color:{C_TEXT};line-height:1.6;margin:0 0 12px 0;
+                    font-size:1.1em;">
+            <b>TotalEnergies : −15%</b> en deux heures.
+          </p>
+          <p style="color:{C_TEXT};font-style:italic;line-height:1.6;
+                    margin:0;border-left:3px solid {C_LILAC};padding-left:12px;">
+            Votre téléphone vibre. C'est Élise.<br>
+            « Ne paniquez pas. Mais regardez votre exposition Énergie.
+            On en parle dans 30 minutes. »
+          </p>
+        </div>
+        """
+    elif label.startswith("2"):
+        narrative_html = f"""
+        <div style="background:{C_ROSE_PALER};border:2px solid {C_ROSE_DEEP};
+                    padding:20px;border-radius:8px;margin-bottom:20px;
+                    box-shadow:0 2px 8px rgba(176,122,142,0.15);">
+          <p style="color:{C_ROSE_DEEP};font-weight:bold;font-size:0.85em;
+                    letter-spacing:2px;margin:0 0 10px 0;">
+            💥 14H03 · SCANDALE · LE MONDE / FT
+          </p>
+          <h3 style="color:{C_LILAC_DEEP};margin:0 0 12px 0;">
+            Stellantis a falsifié ses tests d'émissions CO₂ depuis 2022
+          </h3>
+          <p style="color:{C_TEXT};line-height:1.6;margin:0 0 12px 0;">
+            Une enquête conjointe <i>Le Monde</i> / <i>Financial Times</i>
+            sort à 14h pile. Documents internes, témoignages d'ingénieurs,
+            mails de la direction. La Commission européenne convoque la
+            direction pour demain.
+          </p>
+          <p style="color:{C_TEXT};line-height:1.6;margin:0 0 12px 0;
+                    font-size:1.1em;">
+            <b>Stellantis : −20%</b>. Score ESG dégradé de
+            <b>29 → 5</b> par les agences de notation dans la foulée.
+          </p>
+          <p style="color:{C_TEXT};font-style:italic;line-height:1.6;
+                    margin:0;border-left:3px solid {C_LILAC};padding-left:12px;">
+            Élise débarque dans votre bureau, livide.<br>
+            « Si on a Stellantis dans le portefeuille, on est mort sur l'ESG.
+            Réagissez. »
+          </p>
+        </div>
+        """
+    else:
+        narrative_html = f"""
+        <div style="background:{C_LILAC_PALER};border:2px solid {C_LILAC_DEEP};
+                    padding:20px;border-radius:8px;margin-bottom:20px;
+                    box-shadow:0 2px 8px rgba(107,91,149,0.15);">
+          <p style="color:{C_LILAC_DEEP};font-weight:bold;font-size:0.85em;
+                    letter-spacing:2px;margin:0 0 10px 0;">
+            🌿 15H22 · FLASH · COMMISSION EUROPÉENNE
+          </p>
+          <h3 style="color:{C_LILAC_DEEP};margin:0 0 12px 0;">
+            Plan de 800 milliards d'euros pour la transition écologique
+          </h3>
+          <p style="color:{C_TEXT};line-height:1.6;margin:0 0 12px 0;">
+            Ursula von der Leyen dévoile en conférence de presse un plan
+            massif d'investissement vert. Les analystes sortent leurs notes
+            en quinze minutes. Les valeurs green s'envolent.
+          </p>
+          <p style="color:{C_TEXT};line-height:1.6;margin:0 0 12px 0;
+                    font-size:1.1em;">
+            <b>Schneider Electric : +15%</b> · <b>Air Liquide : +10%</b>.
+          </p>
+          <p style="color:{C_TEXT};font-style:italic;line-height:1.6;
+                    margin:0;border-left:3px solid {C_ROSE};padding-left:12px;">
+            Ping. Slack. Élise.<br>
+            « On profite ou on a raté le train ? Vos chiffres dans 5 minutes. »
+          </p>
+        </div>
+        """
+
+    st.markdown(narrative_html, unsafe_allow_html=True)
 
     w1, total1 = weights_from_state('a1')
     if abs(total1 - 100) > 0.1:
-        st.info("Complétez d'abord votre Acte 1 pour visualiser l'impact.")
+        st.info("⏳ Complétez d'abord votre Acte 1 pour mesurer l'impact.")
     else:
         r_av, v_av = port_stats(w1, RETS)
         r_ap, v_ap = port_stats(w1, rets_shock)
         sh_av = (r_av - RF) / v_av
         sh_ap = (r_ap - RF) / v_ap
+
+        st.markdown("### 💼 Impact sur votre portefeuille Acte 1")
 
         c1, c2 = st.columns(2)
         c1.metric("Rendement avant choc", f"{r_av*100:.2f}%")
@@ -390,7 +553,7 @@ with tab_evt:
         c4.metric("Sharpe après choc", f"{sh_ap:.3f}",
                   delta=f"{sh_ap - sh_av:+.3f}")
 
-        st.markdown("#### Impact actif par actif")
+        st.markdown("#### Détail actif par actif")
         df_imp = pd.DataFrame({
             'Actif': NAMES,
             'Poids (%)':       (w1*100).round(1),
@@ -403,15 +566,30 @@ with tab_evt:
         st.dataframe(df_imp[df_imp['Poids (%)'] > 0],
                      use_container_width=True, hide_index=True)
 
-# ── ACTE 2 ────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# ACTE 2 — 15h47
+# ─────────────────────────────────────────────────────────────────────────
 with tab_a2:
-    st.markdown("### 🌿 Acte 2 — Recomposition sous contrainte ESG")
-    st.markdown(
-        f"> **Contexte réglementaire :** votre fonds doit afficher un **score ESG moyen ≥ {ESG_MIN}** "
-        "pour conserver son label SFDR Article 8."
-    )
+    st.markdown(f"""
+    <div style="background:{C_LILAC_PALER};border-left:4px solid {C_LILAC_DEEP};
+                padding:18px 20px;border-radius:6px;margin-bottom:20px;">
+      <p style="color:{C_MUTED};font-size:0.85em;margin:0 0 6px 0;
+                letter-spacing:1px;">📍 15H47 · SALLE DE RÉUNION B12</p>
+      <p style="color:{C_TEXT};margin:0;line-height:1.6;">
+        Réunion d'urgence du comité d'investissement. Six personnes autour
+        de la table. Élise pose ses lunettes sur le dossier ouvert devant elle.
+      </p>
+      <p style="color:{C_TEXT};font-style:italic;line-height:1.65;
+                margin:14px 0 0 0;border-left:3px solid {C_ROSE};
+                padding-left:14px;">
+        « Décision prise. On verrouille la classification <b>SFDR Article 8</b>
+        — score ESG moyen ≥ <b>{ESG_MIN}</b>, contrainte officielle.<br><br>
+        À vous de recomposer le portefeuille. Je veux votre nouvelle
+        allocation à <b>17h</b>. Le rendement ne suffit plus. »
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Frontières post-événement
     fv_libre,  fr_libre  = frontier(rets_tuple=tuple(rets_shock), esg_tuple=tuple(esg_shock))
     fv_esg,    fr_esg    = frontier(esg_min=ESG_MIN, rets_tuple=tuple(rets_shock), esg_tuple=tuple(esg_shock))
     w_opt_libre = optimize(rets_tuple=tuple(rets_shock), esg_tuple=tuple(esg_shock))
@@ -425,23 +603,25 @@ with tab_a2:
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
     ax = axes[0]
-    ax.scatter(VOLS*100, rets_shock*100, c=esg_shock, cmap='RdYlGn',
-               vmin=20, vmax=90, s=120, zorder=5, edgecolors='white', lw=1.3)
+    ax.scatter(VOLS*100, rets_shock*100, c=esg_shock, cmap=PASTEL_CMAP,
+               vmin=20, vmax=90, s=130, zorder=5, edgecolors='white', lw=1.5)
     for i, name in enumerate(NAMES):
         ax.annotate(name, (VOLS[i]*100, rets_shock[i]*100),
-                    textcoords='offset points', xytext=(6, 3), fontsize=8.5)
-    ax.plot(fv_libre*100, fr_libre*100, '--', color=C_SAGE_DEEP, lw=1.8,
+                    textcoords='offset points', xytext=(6, 3),
+                    fontsize=8.5, color=C_TEXT)
+    ax.plot(fv_libre*100, fr_libre*100, '--', color=C_ROSE_DEEP, lw=1.8,
             label='Frontière libre')
-    ax.plot(fv_esg*100,   fr_esg*100,   '-',  color=C_CLAY,      lw=2.4,
+    ax.plot(fv_esg*100,   fr_esg*100,   '-',  color=C_LILAC_DEEP, lw=2.4,
             label=f'Frontière ESG ≥ {ESG_MIN}')
-    ax.scatter([v_libre*100], [r_libre*100], marker='*', s=280,
-               color=C_SAGE_DEEP, zorder=6, edgecolor='white', lw=1,
+    ax.scatter([v_libre*100], [r_libre*100], marker='*', s=300,
+               color=C_ROSE_DEEP, zorder=6, edgecolor='white', lw=1.2,
                label=f'Max Sharpe libre ({sh_libre:.3f})')
-    ax.scatter([v_esg*100],   [r_esg*100],   marker='*', s=280,
-               color=C_CLAY,      zorder=6, edgecolor='white', lw=1,
+    ax.scatter([v_esg*100],   [r_esg*100],   marker='*', s=300,
+               color=C_LILAC_DEEP, zorder=6, edgecolor='white', lw=1.2,
                label=f'Max Sharpe ESG ({sh_esg:.3f})')
     ax.set_xlabel('Volatilité (%)'); ax.set_ylabel('Rendement (%)')
-    ax.set_title('Frontières après événement', fontweight='bold', color=C_SAGE_DEEP)
+    ax.set_title('Frontières après l\'événement',
+                 fontweight='bold', color=C_LILAC_DEEP)
     ax.legend(fontsize=8.5)
 
     ax2 = axes[1]
@@ -449,21 +629,22 @@ with tab_a2:
     v_l = [sh_libre, r_libre*100, v_libre*100, w_opt_libre @ esg_shock]
     v_e = [sh_esg,   r_esg*100,   v_esg*100,   w_opt_esg   @ esg_shock]
     x = np.arange(len(cats)); wb = 0.36
-    b1 = ax2.bar(x - wb/2, v_l, wb, label='Libre',           color=C_SAGE_DEEP, alpha=0.85)
-    b2 = ax2.bar(x + wb/2, v_e, wb, label=f'ESG ≥ {ESG_MIN}', color=C_CLAY,      alpha=0.85)
+    b1 = ax2.bar(x - wb/2, v_l, wb, label='Libre',           color=C_ROSE_DEEP, alpha=0.85)
+    b2 = ax2.bar(x + wb/2, v_e, wb, label=f'ESG ≥ {ESG_MIN}', color=C_LILAC_DEEP, alpha=0.85)
     for b in list(b1) + list(b2):
         ax2.text(b.get_x() + b.get_width()/2, b.get_height() + 0.15,
-                 f'{b.get_height():.2f}', ha='center', va='bottom', fontsize=8.5)
+                 f'{b.get_height():.2f}', ha='center', va='bottom',
+                 fontsize=8.5, color=C_TEXT)
     ax2.set_xticks(x); ax2.set_xticklabels(cats); ax2.legend()
     ax2.set_ylim(0, max(max(v_l), max(v_e)) * 1.22)
     ax2.set_title(f'Comparaison\nCoût ESG sur Sharpe : {cout_esg_pct:.1f}%',
-                  fontweight='bold', color=C_SAGE_DEEP)
+                  fontweight='bold', color=C_LILAC_DEEP)
     fig.tight_layout()
     st.pyplot(fig)
 
-    st.info(f"💡 **Coût ESG** : la contrainte fait perdre {cout_esg_pct:.1f}% de ratio de Sharpe.")
+    st.info(f"💡 **Le coût de la conscience verte** : la contrainte ESG fait perdre "
+            f"**{cout_esg_pct:.1f}%** de ratio de Sharpe. Élise va vouloir une explication.")
 
-    # Boutons d'aide Acte 2
     bcol1, bcol2, bcol3 = st.columns(3)
     if bcol1.button("⚖️ Équipondération", key='a2_eq', use_container_width=True):
         set_weights_from_array('a2', np.ones(N) / N); st.rerun()
@@ -473,7 +654,7 @@ with tab_a2:
         for name in NAMES: st.session_state[f'a2_{name}'] = 0
         st.rerun()
 
-    st.markdown("#### ✏️ Saisissez vos poids — Acte 2 (en %)")
+    st.markdown("#### ✏️ Nouvelle allocation — Acte 2 (en %)")
     cols = st.columns(2)
     for i, name in enumerate(NAMES):
         with cols[i % 2]:
@@ -489,9 +670,11 @@ with tab_a2:
         r2, v2 = port_stats(w2, rets_shock)
         sh2 = (r2 - RF) / v2 if v2 > 1e-8 else 0
         if esg2_val < ESG_MIN:
-            st.error(f"❌ Contrainte SFDR non respectée : ESG = {esg2_val:.1f} < {ESG_MIN}")
+            st.error(f"❌ **Contrainte SFDR violée** : ESG = {esg2_val:.1f} < {ESG_MIN}. "
+                     f"Le label Article 8 sera retiré au fonds.")
         else:
-            st.success(f"✅ Contrainte SFDR respectée : ESG = {esg2_val:.1f} ≥ {ESG_MIN}")
+            st.success(f"✅ **Contrainte SFDR respectée** : ESG = {esg2_val:.1f} ≥ {ESG_MIN}. "
+                       f"Le label est sauvé.")
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Rendement",  f"{r2*100:.2f}%")
@@ -507,9 +690,21 @@ with tab_a2:
         st.dataframe(df_w2[df_w2['Poids (%)'] > 0],
                      use_container_width=True, hide_index=True)
 
-# ── SCORE ─────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# SCORE — 18h
+# ─────────────────────────────────────────────────────────────────────────
 with tab_score:
-    st.markdown("### 📊 Score final")
+    st.markdown(f"""
+    <div style="background:{C_LILAC_PALER};border-left:4px solid {C_LILAC};
+                padding:18px 20px;border-radius:6px;margin-bottom:20px;">
+      <p style="color:{C_MUTED};font-size:0.85em;margin:0 0 6px 0;
+                letter-spacing:1px;">📍 18H00 · DEBRIEF DE FIN DE JOURNÉE</p>
+      <p style="color:{C_TEXT};margin:0;line-height:1.6;">
+        Le marché ferme. Élise compile votre performance pour le comité.
+        C'est l'heure du verdict.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.expander("🧮 Comment est calculé le score ?"):
         st.markdown(f"""
@@ -517,9 +712,9 @@ with tab_score:
         - **Sharpe** : `min(Sharpe / 1.5, 1) × 50` → max **50 pts**
         - **ESG**    : `min(ESG / 100, 1) × 30` → max **30 pts**
 
-        Pour **l'acte 2 uniquement** :
+        Pour **l'Acte 2 uniquement** :
         - 🎁 Bonus de **+10 pts** si ESG ≥ 65 (au-delà de la contrainte)
-        - ❌ Pénalité de **−15 pts** si ESG < {ESG_MIN} (contrainte SFDR violée)
+        - ❌ Pénalité de **−15 pts** si ESG < {ESG_MIN} (label retiré)
 
         **Score total** : Acte 1 + Acte 2, sur **160 points**.
         """)
@@ -550,12 +745,41 @@ with tab_score:
                 st.write(f"{emoji} Bonus / pénalité : **{s2['bonus']:+.0f}**")
 
         st.markdown("---")
+        if score_total >= 120:
+            verdict = "🌟 **Élise sourit.** « Pas mal pour un premier jour. »"
+        elif score_total >= 90:
+            verdict = "👍 **Élise hoche la tête.** « Vous avez compris l'arbitrage. On en reparle demain. »"
+        elif score_total >= 60:
+            verdict = "🤔 **Élise vous regarde.** « Il y a des leçons à tirer. On débrief lundi. »"
+        else:
+            verdict = "😬 **Silence dans le bureau d'Élise.** « On va revoir les fondamentaux ensemble. »"
+
         st.success(f"🏆 **{st.session_state.team_name} : {score_total:.1f} / 160**")
+        st.markdown(f"<p style='font-size:1.05em;color:{C_TEXT};margin-top:10px;'>{verdict}</p>",
+                    unsafe_allow_html=True)
         st.progress(min(max(score_total / 160, 0.0), 1.0))
 
-# ── PITCH & CORRECTION ────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# PITCH — 18h30
+# ─────────────────────────────────────────────────────────────────────────
 with tab_pitch:
-    st.markdown("### 🎤 Pitch — Défendez vos choix (10 min)")
+    st.markdown(f"""
+    <div style="background:{C_ROSE_PALER};border-left:4px solid {C_ROSE_DEEP};
+                padding:18px 20px;border-radius:6px;margin-bottom:20px;">
+      <p style="color:{C_MUTED};font-size:0.85em;margin:0 0 6px 0;
+                letter-spacing:1px;">📍 18H30 · COMITÉ D'INVESTISSEMENT</p>
+      <p style="color:{C_TEXT};margin:0;line-height:1.6;">
+        Vous entrez dans la salle du comité. Autour de la table : Élise,
+        le DG, deux avocats SFDR, le risk manager, et le responsable de la
+        relation investisseurs. Tous attendent.
+      </p>
+      <p style="color:{C_TEXT};margin:14px 0 0 0;line-height:1.6;
+                font-style:italic;">
+        Vous avez <b>10 minutes</b> pour défendre votre allocation. Pas de
+        slides. Juste vos chiffres et votre raisonnement.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     w1, total1 = weights_from_state('a1')
     w2, total2 = weights_from_state('a2')
@@ -570,34 +794,45 @@ with tab_pitch:
             lbls = [NAMES[i] for i in idx]
             vals = [w[i]*100 for i in idx]
             esgs = [esg_used[i] for i in idx]
-            cols = plt.cm.RdYlGn(np.array(esgs) / 100) if len(esgs) else []
-            bars = ax.barh(lbls, vals, color=cols, edgecolor='white', linewidth=1.5)
+            cols = PASTEL_CMAP(np.array(esgs) / 100) if len(esgs) else []
+            bars = ax.barh(lbls, vals, color=cols, edgecolor='white', linewidth=1.8)
             for bar, e in zip(bars, esgs):
                 ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height()/2,
-                        f'ESG {e}', va='center', fontsize=8.5)
+                        f'ESG {e}', va='center', fontsize=8.5, color=C_TEXT)
             r, v = port_stats(w, rets_used)
             sh = (r - RF) / v if v > 1e-8 else 0
             ax.set_xlabel('Poids (%)')
             ax.set_title(f'{titre}\nSharpe={sh:.3f} · ESG={w@esg_used:.1f}',
-                         fontweight='bold', color=C_SAGE_DEEP)
+                         fontweight='bold', color=C_LILAC_DEEP)
             ax.set_xlim(0, max(vals)*1.25 if vals else 10)
         fig.suptitle('Évolution Acte 1 → Acte 2',
-                     fontsize=12, fontweight='bold', color=C_SAGE_DEEP, y=1.02)
+                     fontsize=12, fontweight='bold', color=C_LILAC_DEEP, y=1.02)
         fig.tight_layout()
         st.pyplot(fig)
 
-    st.markdown(
-        """
-        #### Questions pour le pitch
-        1. Quels actifs avez-vous **renforcés ou réduits** entre l'Acte 1 et l'Acte 2 ?
-        2. Quel est votre **coût ESG** en perte de Sharpe ? Est-ce justifié ?
-        3. Si le **seuil ESG passait à 70**, que feriez-vous ?
-        4. Comment votre allocation se compare-t-elle à un fonds **équipondéré** ?
-        """
-    )
+    st.markdown(f"""
+    <div style="background:{C_LILAC_PALER};padding:16px 20px;
+                border-radius:6px;margin-top:10px;">
+      <h4 style="color:{C_LILAC_DEEP};margin:0 0 12px 0;">
+        🎤 Les questions du comité
+      </h4>
+      <ol style="color:{C_TEXT};line-height:1.8;margin:0;padding-left:20px;">
+        <li>Quels actifs avez-vous <b>renforcés ou réduits</b> entre
+            l'Acte 1 et l'Acte 2 ? Pourquoi ?</li>
+        <li>Quel est votre <b>coût ESG</b> en perte de Sharpe ?
+            Est-ce justifié auprès des investisseurs ?</li>
+        <li>Si la Commission durcit le seuil ESG <b>à 70</b> demain,
+            que feriez-vous ?</li>
+        <li>Comment votre allocation se compare-t-elle à un fonds
+            <b>équipondéré</b> ?</li>
+        <li><i>Question piège du DG :</i> pourquoi ne pas sortir
+            entièrement des actifs à faible ESG ?</li>
+      </ol>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### 📊 Correction — Portefeuille optimal sous contrainte ESG")
+    st.markdown("### 📊 Le verdict du quant senior — portefeuille optimal sous contrainte")
 
     w_opt_esg = optimize(esg_min=ESG_MIN,
                          rets_tuple=tuple(rets_shock),
@@ -629,15 +864,20 @@ with tab_pitch:
 
     st.markdown(
         f"""
-        **Leçons clés du jeu**
-        - Coût ESG sur le Sharpe : **{cout:.1f}%**
-        - ESG moyen optimal sous contrainte : **{w_opt_esg @ esg_shock:.1f}** (seuil imposé : {ESG_MIN})
-        - **Diversification** : elle protège davantage qu'une allocation concentrée — même green.
-        - **Argumenter** un choix vaut autant que le calculer : c'est tout le métier de gérant.
+        #### 💡 Ce qu'il faut retenir de la journée
+
+        - Le **coût ESG** sur le Sharpe ressort à **{cout:.1f}%** : c'est
+          le prix de la conformité Article 8.
+        - L'ESG moyen optimal sous contrainte : **{w_opt_esg @ esg_shock:.1f}**
+          (seuil imposé : {ESG_MIN}). On ne fait pas plus que nécessaire.
+        - **La diversification protège** plus qu'une allocation concentrée —
+          même verte. Une seule action peut couler un fonds (cf. Stellantis).
+        - **Argumenter** un choix d'allocation vaut autant que le calculer.
+          C'est tout le métier.
         """
     )
 
     st.caption(
-        "Références : Markowitz (1952) · Pedersen, Fitzgibbons & Pomorski (2021) · "
-        "Règlement (UE) 2019/2088 (SFDR)"
+        "Références académiques : Markowitz (1952) · Pedersen, Fitzgibbons & Pomorski (2021) · "
+        "Règlement (UE) 2019/2088 (SFDR) · Article 8."
     )
