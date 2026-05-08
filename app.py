@@ -263,7 +263,7 @@ with tab_brief:
         return f'background-color:{C_CLAY_BG};color:{C_CLAY_DEEP}'
 
     st.dataframe(
-        df_assets.style.applymap(color_esg, subset=['Score ESG /100']),
+       df_assets.style.map(color_esg, subset=['Score ESG /100']),
         use_container_width=True, hide_index=True,
     )
 
